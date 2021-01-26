@@ -1,0 +1,40 @@
+---
+- name: Check Prometheus version
+  shell: prometheus --version 2>&1 | awk '/prometheus, version [[:digit:]]+\.[[:digit:]]+\.[[:digit:]]+/ { print $3 }'
+  register: prometheus_version_installed
+  ignore_errors: true
+  changed_when: false
+
+- name: Download and unarchive Prometheus tar file
+  unarchive:
+    src: "https://github.com/prometheus/prometheus/releases/download/v{{ prometheus_version }}/prometheus-{{ prometheus_version }}.linux-amd64.tar.gz"
+    dest: /tmp
+    remote_src: true
+  when: prometheus_version_installed.stdout != prometheus_version
+
+- name: Install Prometheus
+  become: true
+  copy:
+    src: "/tmp/prometheus-{{ prometheus_version }}.linux-amd64/prometheus"
+    dest: /usr/local/bin/prometheus
+    remote_src: true
+    mode: 0755
+    owner: root
+    group: root
+  when: prometheus_version_installed.stdout != prometheus_version
+  notify: restart prometheus
+
+- name: Clean temp data
+  file:
+    dest: "/tmp/prometheus-{{ prometheus_version }}.linux-amd64"
+    state: absent
+
+- name: Configure Prometheus as service
+  become: true
+  template:
+    src: "prometheus.service.j2"
+    dest: "/etc/systemd/system/prometheus.service"
+    mode: 0644
+    owner: root
+    group: root
+  notify: restart prometheus

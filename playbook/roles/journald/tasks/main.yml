@@ -1,0 +1,33 @@
+---
+- name: Положим файл конфигурации journald
+  template:
+    src: journald.conf.j2
+    dest: /etc/systemd/journald.conf
+  notify:
+    - journald restart
+
+- name: Установим systemd-journal-gateway
+  yum:
+    name: systemd-journal-gateway
+    state: present
+
+- name: Создадим директорию под логирование
+  file:
+    path: /var/log/journal
+    mode: 0755
+    owner: root
+    group: root
+    state: directory
+  notify:
+  - journald restart
+
+- name: Copy journal-upload.conf file
+  copy: 
+    src: journal-upload.conf
+    dest: /etc/systemd/
+
+- name: Start journald-upload
+  service: 
+    name: systemd-journal-upload
+    state: started 
+    enabled: yes

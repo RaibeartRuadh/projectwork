@@ -1,0 +1,91 @@
+---
+- name: Install nginx
+  yum:
+    name: nginx
+    state: present
+
+#- name: selinux port
+#  command: semanage port -a -t http_port_t -p tcp 443
+
+- name: Disable default route (vagrant)
+  lineinfile:
+    path: /etc/sysconfig/network-scripts/ifcfg-eth0
+    line: "DEFROUTE=no"
+  notify: restart network
+
+- name: Add default route
+  lineinfile:
+    path: /etc/sysconfig/network-scripts/ifcfg-eth2
+    line: "GATEWAY=192.168.255.1"
+  notify: restart network
+
+- name: Restart network (vagrant bug)
+  service:
+    name: network
+    state: restarted
+
+#- name: Файл сертификата
+#  copy:
+#    src: mysite.localhost.crt
+#    dest: /home/vagrant/mysite.localhost.crt
+
+#- name: Ключ сертификата
+#  copy:
+#    src: device.key
+#    dest: /home/vagrant/device.key
+
+- name: create sites-available and sites-enabled directory
+  file: 
+    name: /etc/nginx/sites-available
+    state: directory
+
+- file:
+    src: /etc/nginx/sites-available
+    dest: /etc/nginx/sites-enabled
+    state: link
+
+- name: copy nginx conf files
+  copy:
+    src: project.local.conf
+    dest: /etc/nginx/sites-available/project.local.conf
+
+- copy:
+    src: nginx.conf
+    dest: /etc/nginx/nginx.conf
+
+- name: start nginx
+  service:
+    name: nginx
+    state: started
+    enabled: yes
+
+- name: selinux task
+  seboolean:
+    name: httpd_can_network_connect
+    state: yes
+    persistent: yes
+
+- name: start firewalld
+  service:
+    name: firewalld
+    state: started
+    enabled: yes
+
+- name: add DMZ zone (1)
+  command: firewall-cmd --zone=dmz --permanent --add-interface=eth2
+
+- name: add internal zone (1)
+  command: firewall-cmd --zone=internal --permanent --add-interface=eth1
+
+- name: enable firewalld http at dmz
+  firewalld:
+    zone: dmz
+    service: http
+    permanent:  yes
+    state: enabled
+    immediate:  yes
+    
+    
+    
+    
+    

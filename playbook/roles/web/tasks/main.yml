@@ -1,0 +1,196 @@
+---
+# Apache and php
+- name: Установим apache web server
+  yum:
+    name: httpd
+    state: present
+    
+- name: Установим ssl mod
+  yum:
+    name: mod_ssl
+    state: present
+
+- name: install php-fpm
+  yum: 
+    name: php-fpm
+    state: present
+
+- name: Install php72 repository
+  yum:
+    name: 'http://rpms.remirepo.net/enterprise/remi-release-7.rpm'
+    state: present
+
+- name: Файл сертификата
+  copy:
+    src: mysite.localhost.crt
+    dest: /home/vagrant/mysite.localhost.crt
+
+- name: Ключ сертификата
+  copy:
+    src: device.key
+    dest: /home/vagrant/device.key
+
+- name: Установка php модулей
+  yum:
+    enablerepo: 'remi-php72'
+    name: ['php-cli', 'php-mysql', 'php-json', 'php-opcache', 'php-mbstring', 'php-xml', 'php-gd', 'php-curl', 'python2-cryptography']
+    state: present
+    update_cache: yes
+
+#- name: Сменим порт в apache на 443
+#  lineinfile:
+#    path: /etc/httpd/conf/httpd.conf
+#    regexp: '^Listen '
+#    insertafter:  '^#Listen '
+#    line: Listen 443
+
+- name: Директория под сайт
+  file:
+    name: /var/www/html/project.local/
+    state: directory
+    owner: apache
+    group: apache
+
+- name: Директория под логи
+  file:
+    name: /var/www/html/project.local/log
+    state: directory
+    owner: apache
+    group: apache
+
+- name: Копируем конфиг
+  copy: 
+    src: project.local.conf
+    dest: /etc/httpd/conf.d/project.local.conf
+
+- name: allow apache to listen on tcp port 443
+  seport:
+    ports: 443
+    proto: tcp
+    setype: http_port_t
+    state: present
+
+- name: Apply new SELinux SSL context
+  command: chcon unconfined_u:object_r:httpd_config_t:s0 /home/vagrant/mysite.localhost.crt
+
+- name: Apply new SELinux SSL context
+  command: chcon unconfined_u:object_r:httpd_config_t:s0 /home/vagrant/device.key
+
+- name: conf file for php-fpm
+  copy: 
+    src: php-fpm.conf
+    dest: /etc/php-fpm.d/www.conf
+
+- name: conf file for apache php
+  copy: 
+    src: php.conf
+    dest: /etc/httpd/conf.d/php.conf
+
+- name: copy conf file for mpm
+  copy:
+    src: 00-mpm.conf
+    dest: /etc/httpd/conf.modules.d/00-mpm.conf
+
+
+- name: Проверяем наличие wordpress
+  stat: path=/var/www/html/project.local/wordpress/wp-config.php
+  register: wp
+
+- name: Делаем директорию под wordpress, если нет
+  file:
+    path: /var/www/html/project.local
+    state: directory
+  when: wp.stat.exists==False
+
+- name: Скачаем пакет wordpress, если еще нет
+  get_url:
+    url: https://wordpress.org/latest.tar.gz
+    dest: /tmp/wordpress.tar.gz
+    validate_certs: no
+  when: wp.stat.exists==False
+
+- name: Извлекаем WordPress, если еще нет
+  unarchive: 
+    src: /tmp/wordpress.tar.gz
+    dest: /var/www/html/project.local/ 
+    copy: no
+    owner: apache
+    group: apache
+    setype: httpd_sys_content_t
+  when: wp.stat.exists==False
+
+- name: Параметры Selinux для wordpress
+  sefcontext: 
+    target: '/var/www/html/project.local/wordpress/wp-content(/.*)?'
+    setype: httpd_sys_rw_content_t
+    state: present
+
+- sefcontext:
+    target: '/var/www/html/project.local/log(/.*)?'
+    setype: httpd_log_t
+    state: present
+
+- name: Копируем конфиг wordpress
+  copy: 
+    src: files/wp-config.php
+    dest: /var/www/html/project.local/wordpress/wp-config.php
+    owner: apache
+    group: apache
+    setype: httpd_sys_rw_content_t
+  when: wp.stat.exists==False
+
+- name: Apply new SELinux file context to filesystem
+  command: restorecon -irv /var/www/html/project.local/wordpress
+
+- name: Set httpd_can_network_connect flag on and keep it persistent across reboots
+  seboolean: name=httpd_can_network_connect state=yes persistent=yes
+
+- name: Set httpd_can_network_connect_db flag on and keep it persistent across reboots
+  seboolean: 
+    name: httpd_can_network_connect_db
+    state: yes
+    persistent: yes
+
+- name: Set httpd_unnified flag
+  seboolean: 
+    name: httpd_unified
+    state: yes
+    persistent: yes
+
+- name: start apache
+  service: 
+    name: httpd
+    state: started
+    enabled: yes
+
+- name: start php-fpm
+  service: 
+    name: php-fpm
+    state: started
+    enabled: yes
+
+- name: add route to frontend
+  copy: 
+    src: route-eth1
+    dest: /etc/sysconfig/network-scripts/route-eth1
+
+- name: Добавим порт 443 в разрешенные для firewalld
+  firewalld:
+    zone: internal
+    port: 443/tcp
+    permanent: yes
+    state: enabled
+    immediate: yes
+
+- name: Cron job for backup html directory
+  cron:
+    name: html backup
+    hour: "23"
+    minute: "0"
+    user: root
+    job: rsync -r /var/www/html/project.local/ /var/backup/
+
+
+
+
+

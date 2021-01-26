@@ -1,0 +1,67 @@
+---
+- name: Ставим пакет borg
+  yum:
+    name: borgbackup
+    state: present
+
+- name: Создадим директорию под бэкапы
+  file: 
+    name: /var/backup
+    state: directory
+  
+- name: Подставляем наш скрипт для регулярного бэкапа
+  template:
+    src: backup.sh.j2
+    dest: /root/backup.sh
+    mode: 0755
+
+- name: Проход по ssh
+  yum:      
+    name: sshpass
+    state: latest
+
+- name: Копируем правила для logrotate
+  copy:
+    src: borg_backup.conf
+    dest: /etc/logrotate.d/borg_backup.conf
+
+- name: Копируем unit service
+  copy:
+    src: backup-borg.service
+    dest: /etc/systemd/system/backup-borg.service
+#  notify:
+#    - enable backup-borg.service
+
+- name: Копируем unit timer
+  copy:
+    src: backup-borg.timer
+    dest: /etc/systemd/system/
+  notify:
+   - enable backup-borg.timer
+
+- name: Проверка ключа ssh
+  stat: path=~/.ssh/id_rsa
+  register: ssh
+
+- name: Cоздадим ssh ключ если его не было
+  command: ssh-keygen -b 2048 -t rsa -q -N '' -f ~/.ssh/id_rsa
+  when: ssh.stat.exists==False
+
+- name: Скопируем ssh ключ
+  command: sshpass -ppassword ssh-copy-id -o StrictHostKeyChecking=no borguser@192.168.100.15
+  when: ssh.stat.exists==False
+
+- name: Проверка репозитория
+  stat: path=/var/backup/repo.flg
+  register: repo
+
+- file: path=/var/backup/repo.flg state=touch
+  when: repo.stat.exists==False
+
+- name: Инициализируем репозиторий, если его нет, для всех хостов из списка
+  command: borg init -e none borguser@192.168.100.15:/var/backup/{{ inventory_hostname }}
+  when: repo.stat.exists==False
+  
+  
+  
+  

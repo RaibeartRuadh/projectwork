@@ -1,0 +1,30 @@
+---
+- name: Поставим borg
+  yum: 
+    name: borgbackup
+    state: present
+
+- name: Добавим пользователя borguser и пароль 
+  user:
+    name: borguser
+    password: "{{ 'password' | password_hash('sha512') }}"
+
+- name: Создадим директорию под бэкапы хостов
+  file:
+    name: /var/backup
+    state: directory
+    owner: borguser
+    group: borguser
+
+- name: Разрешаем логин по SSH
+  lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: "^PasswordAuthentication no"
+    line: "PasswordAuthentication yes"
+
+- name: Рестартуем SSHD
+  service: 
+    name: sshd
+    state: restarted
+
+

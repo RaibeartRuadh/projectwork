@@ -1,0 +1,38 @@
+#!/bin/bash
+# лок на случай повторного запуска
+LOCKFILE=/tmp/lockfile
+if [ -e ${LOCKFILE} ] && kill -0 `cat ${LOCKFILE}`; then
+    echo "Service already working!"
+    exit
+fi
+
+trap "rm -f ${LOCKFILE}; exit" INT TERM EXIT
+echo $$ > ${LOCKFILE}
+
+
+export BORG_RSH="ssh -i /root/.ssh/id_rsa"
+export BORG_REPO=ssh://borguser@192.168.100.15/var/backup/{{ inventory_hostname }}
+export BORG_PASSPHRASE='password'
+LOG="/var/log/borg_backup.log"
+[ -f "$LOG" ] || touch "$LOG"
+exec &> >(tee -i "$LOG")
+exec 2>&1
+
+# создание резервных записей
+
+borg create \
+  --verbose --stats --progress \
+  ::{{ inventory_hostname }}-'{now:%Y-%m-%d_%H:%M:%S}' \
+  /var/backup /etc
+
+# Очистка от старых резервных записей
+
+borg prune \
+  -v --list \
+  --keep-within 1m \
+  --keep-monthly 3 
+
+
+
+# удаляем лок
+rm -f ${LOCKFILE}

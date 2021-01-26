@@ -1,0 +1,17 @@
+---
+galaxy_info:
+  role_name: node_exporter
+  author: RaibeartRuadh
+  license: BSD
+  description: node_exporter installer
+  issue_tracker_url: https://github.com/RaibeartRuadh/ansible-role-node-exporter/issues
+  min_ansible_version: 1.2
+  platforms:
+    - name: EL
+      versions:
+        - 7
+  galaxy_tags:
+    - prometheus
+    - node_exporter
+
+dependencies: []

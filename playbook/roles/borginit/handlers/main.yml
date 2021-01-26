@@ -1,0 +1,13 @@
+---
+- name: enable backup-borg.timer
+  systemd:
+    name: backup-borg.timer
+    daemon_reload: true
+    state: restarted
+    enabled: true
+        
+#- name: enable backup-borg.service
+#systemd:
+#  name: backup-borg.service
+#  daemon_reload: true
+#  enabled: true

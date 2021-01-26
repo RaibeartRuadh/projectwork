@@ -1,0 +1,6 @@
+---
+mysql_db:            "wordpress"
+mysql_user:          "wpuser"
+mysql_password:      "!MyPAS$word"
+mysql_root_password: "Password@123"
+###"!OtusLinux2020"

@@ -1,0 +1,9 @@
+[Unit]
+Description=Служба выполнения резервирования Borg
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/root/backup.sh
+

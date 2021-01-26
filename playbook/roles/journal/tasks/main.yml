@@ -1,0 +1,30 @@
+---
+- name: Установка системы сбора логов
+  yum: 
+    name: systemd-journal-gateway
+    state: present
+
+- name: Создадим директорию под логи
+  file:
+    path: /var/log/journal/remote
+    mode: 0755
+    owner: systemd-journal-remote
+    group: systemd-journal-remote
+    state: directory
+
+- name: Копируем файл сервиса системы сбора логов systemd-journal-remote.service
+  copy:
+    src: systemd-journal-remote.service
+    dest: /etc/systemd/system/
+
+- name: Кладем файл аудита
+  template:
+    src: auditd.conf.j2
+    dest: /etc/audit/auditd.conf
+  notify:
+    - auditd restart
+
+- name: Разрешаем systemd-journal-remote
+  command: systemctl enable --now systemd-journal-remote
+    
+ 

@@ -1,0 +1,11 @@
+[Unit]
+Description=Сервис резервирования - таймер
+
+[Timer]
+OnBootSec=300
+OnUnitActiveSec=300
+Unit=backup-borg.service
+
+[Install]
+WantedBy=multi-user.target
+

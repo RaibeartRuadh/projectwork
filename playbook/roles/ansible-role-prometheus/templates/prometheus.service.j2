@@ -1,0 +1,9 @@
+[Unit]
+Description=Служба Prometheus
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/prometheus --config.file=/etc/prometheus.yml
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,10 @@
+---
+# handlers file for journald
+
+- name:    journald restart
+  service: name=systemd-journald state=restarted
+
+- name:    journald-upload restart
+  service:
+    name:  systemd-journal-upload
+    state: restarted

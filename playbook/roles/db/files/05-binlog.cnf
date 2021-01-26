@@ -1,0 +1,9 @@
+[mysqld]
+log-bin = mysql-bin
+expire-logs-days = 7
+max-binlog-size = 16M
+binlog-format = "MIXED"
+log-slave-updates = On
+gtid-mode = On
+enforce-gtid-consistency = On
+

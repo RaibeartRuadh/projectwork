@@ -1,0 +1,15 @@
+---
+- name: Configure grafana yum repository
+  become: true
+  copy:
+    src: grafana.repo
+    dest: /etc/yum.repos.d/grafana.repo
+    mode: 0644
+    owner: root
+    group: root
+
+- name: Install grafana
+  become: true
+  yum:
+    name: grafana
+  notify: restart grafana

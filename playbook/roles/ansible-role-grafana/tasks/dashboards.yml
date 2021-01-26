@@ -1,0 +1,32 @@
+---
+- name: Создаем директорию для Главной страницы
+  become: true
+  file:
+    dest: /etc/grafana/dashboards
+    state: directory
+    mode: 0750
+    owner: root
+    group: grafana
+  when: grafana_dashboards is defined
+
+- name: Загрузка главной страницы
+  become: true
+  copy:
+    content: "{{ lookup('file', item.file) }}"
+    dest: "/etc/grafana/dashboards/{{ item.name }}.json"
+    mode: 0640
+    owner: root
+    group: grafana
+  loop: "{{ grafana_dashboards }}"
+  notify: restart grafana
+
+- name: Конфигурация Главной страницы
+  become: true
+  template:
+    src: dashboard.yaml.j2
+    dest: "/etc/grafana/provisioning/dashboards/ansible.yaml"
+    mode: 0640
+    owner: root
+    group: grafana
+  notify: restart grafana
+  when: grafana_dashboards is defined

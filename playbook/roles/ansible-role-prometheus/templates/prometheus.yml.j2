@@ -1,0 +1,16 @@
+global:
+  scrape_interval:     20s # Очистка каждые 20 секунд
+
+  external_labels:
+    monitor: 'codelab-monitor'
+
+scrape_configs:
+
+{% for job in prometheus_jobs %}
+  - job_name: {{ job.name }}
+    static_configs:
+      - targets:
+{% for target in job.static_configs.targets %}
+          - {{ target }}
+{% endfor %}
+{% endfor %}

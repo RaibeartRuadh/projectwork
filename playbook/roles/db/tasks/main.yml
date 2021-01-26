@@ -1,0 +1,114 @@
+---
+- name: Поставим репозиторий MySQL
+  yum: 
+    name: https://repo.percona.com/yum/percona-release-latest.noarch.rpm 
+    state: present
+
+- name: Ставим сервер
+  yum: 
+    name: Percona-Server-server-57
+    state: present
+
+- name: Поставим MySQL-python
+  yum: 
+    name: MySQL-python
+    state: present
+
+- name: Копируем файлы конфигурации
+  copy: 
+    src: files/
+    dest: /etc/my.cnf.d/
+  notify: mysql restart
+
+- name: Запуск mysql
+  service: 
+    name: mysqld
+    state: started
+    enabled: yes
+
+- name: Найдем рутовый пароль
+  stat: 
+    path: /root/.my.cnf
+  register: rupass
+
+- name: Получаем значение временного пароля, сгенерированного системой
+  shell: "cat /var/log/mysqld.log | grep 'root@localhost:' | awk '{print $11}'"
+  register: tmp_root_pass
+  when: rupass.stat.exists==False
+################
+- name: Set new password from temporary password
+  shell: 'mysql -e "SET PASSWORD = PASSWORD(''Password@123'');" --connect-expired-password -uroot -p"{{ tmp_root_pass.stdout }}"'
+  when: rupass.stat.exists==False
+
+- name: Copy my.cnf
+  copy: 
+    src: my.cnf
+    dest: /root/.my.cnf
+    force: yes
+####################################
+- name: Создадим базу под wordpress
+  mysql_db: 
+    name: wordpress
+    state: present
+
+- name: Создадим учетку wordpress
+  mysql_user: 
+    name: wpuser
+    host: 192.168.100.12
+    password: "{{ mysql_password }}"
+    priv: 'wordpress.*:ALL'
+    state: present
+
+- name: Modify server-id
+  lineinfile:  
+    path: /etc/my.cnf.d/01-base.cnf 
+    regexp: "^server-id=0" 
+    line: "server-id=1"
+  notify: mysql restart
+
+- name: reate directory for backup
+  file:        
+    name: /var/backup 
+    state: directory
+
+- name: Cron job for mysql dump
+  cron:
+    name: dumpsql
+    hour: "3"
+    minute: "0"
+    job: 'mysqldump wordpress > "/var/backup/database.sql" --set-gtid-purged=OFF'
+
+- name: Добавим порт 3000 в разрешенные для firewalld
+  firewalld:
+    zone: internal
+    port: 3000/tcp
+    permanent: yes
+    state: enabled
+    immediate: yes
+
+- name: Добавим порт 9100 в разрешенные для firewalld
+  firewalld:
+    zone: internal
+    port: 9100/tcp
+    permanent: yes
+    state: enabled
+    immediate: yes
+    
+- name: Добавим порт 9090 в разрешенные для firewalld
+  firewalld:
+    zone: internal
+    port: 9090/tcp
+    permanent: yes
+    state: enabled
+    immediate: yes  
+
+- name: Разрешить MySQL в Firewall
+  firewalld:
+    zone: internal
+    service: mysql
+    permanent: yes
+    state: enabled
+    immediate: yes
+    
+    
+    

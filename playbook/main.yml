@@ -1,0 +1,197 @@
+---
+
+- hosts: all
+  name: Общие параметры и пакеты для каждого хоста
+  become: true
+  vars:
+    ntp_timezone: Europe/Moscow
+  tasks:
+  - name: Устанавливаем epel-репозиторий
+    yum:
+      name: epel-release
+      state: present
+    tags:
+      - epel-package
+      - packages
+
+  - name: Поставим пакеты
+    yum:
+      name: "{{ packages }}"
+      state: present
+    vars:
+      packages:
+      - bind
+      - bind-utils
+      - mc
+      - nano
+      - curl
+      - ntp
+      - tzdata      
+      - policycoreutils-python
+
+  - name: Отключаем chrony
+    systemd:
+      name: chronyd
+      enabled: false
+
+  - name: Ставим временную зону
+    timezone:
+      name: "{{ ntp_timezone }}"
+
+  - name: Включаем ntpd 
+    systemd:
+      name: ntpd
+      state: restarted
+      enabled: true
+
+- hosts: all, !fwd, !front
+  become: true
+  roles:
+    - route
+
+- hosts: backup
+  become: true
+  roles:
+    - backup
+
+
+
+- hosts: fwd
+  become: true
+  tasks:
+  - name: Разрешаем роутинг
+    sysctl:
+      name: net.ipv4.ip_forward
+      value: '1'
+      sysctl_set: yes
+      state: present
+      reload: yes
+  - name: Разрешаем маскарадинг
+    iptables:
+      table: nat
+      chain: POSTROUTING
+      out_interface: "eth0"
+      source: "192.168.0.0/16"
+      jump: MASQUERADE
+
+  - name: Разрешаем firewalld
+    service: 
+      name: firewalld
+      state: started
+      enabled: yes
+
+
+  - name: Добавляем DMZ зону
+    command: firewall-cmd --zone=dmz --permanent --add-interface=eth2
+
+  - name: Добавляем DMZ зону
+    firewalld:
+      zone: dmz
+      masquerade: "yes"
+      permanent: yes
+      immediate: yes
+      state: enabled
+
+  - name: Добавляем внутреннюю зону
+    command: firewall-cmd --zone=internal --permanent --add-interface=eth1
+
+  - name: Добавляем внешнюю зону
+    command: firewall-cmd --zone=external --permanent --add-interface=eth0
+
+  - name: Добавляем внешнюю зону
+    firewalld:
+      zone: external
+      masquerade: "yes"
+      permanent: yes
+      immediate: yes
+      state: enabled
+      
+  - name: Добавляем внешнюю зону
+    firewalld:
+      zone: external
+      permanent: yes
+      immediate: yes
+      rich_rule: rule family=ipv4 forward-port port=80 protocol=tcp to-port=80 to-addr=192.168.255.2
+      state: enabled
+
+
+- hosts: journal
+  become: true
+  vars:
+    - server_hostname: journal-server.local
+    - key_size: 4096
+    - passphrase: # Set if you want passphrase
+    - key_type: RSA # Others include DSA, ECC, Ed25519, Ed448, X25519, X448
+    - country_name: RU
+    - email_address: robroyway@gmail.com
+    - organization_name: royproject
+  roles:
+    - journal
+
+- hosts: web
+  become: true
+  roles:
+    - role: web
+
+- hosts: db
+  become: true
+  roles:
+    - role: ansible-role-prometheus
+      prometheus_version: 2.22.0
+      prometheus_jobs:
+        - name: node-prometheus
+          static_configs:
+            targets:
+              - '192.168.100.13:9090'
+              - '192.168.100.13:9100'
+    - role: ansible-role-node-exporter
+      node_exporter_version: 1.0.1
+    - role: ansible-role-grafana
+      grafana_datasources:
+        - name: prometheus
+          type: prometheus
+          url: "http://192.168.100.13:9090"
+      grafana_dashboards:
+        - name: node_exporter
+          file: dashboards/node_exporter.json
+    - db
+
+- hosts: front
+  become: true
+  roles:
+    - front
+
+- hosts: all, !backup
+  become: true
+  roles:
+    - borginit
+
+- hosts: all, !journal
+  become: true
+  roles:
+    - journald
+
+#########################
+- hosts: firewall
+  become: true
+  tasks:
+  - name: add internal zone (2)
+    firewalld:
+      zone: internal
+      masquerade: "yes"
+      permanent: yes
+      immediate: yes
+      state: enabled
+  - name: add internal zone (3)
+    firewalld:
+      zone: internal
+      permanent: yes
+      immediate: yes
+      rich_rule: rule family=ipv4 forward-port port=80 protocol=tcp to-port=80 to-addr=192.168.255.2
+      state: enabled
+
+- hosts: all
+  become: yes
+  tasks:
+  - reboot:
+

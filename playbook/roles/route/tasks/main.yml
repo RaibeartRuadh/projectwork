@@ -1,0 +1,37 @@
+---
+- name:  Отключить адресацию по-умолчанию
+  lineinfile:
+    path: /etc/sysconfig/network-scripts/ifcfg-eth0
+    line: "DEFROUTE=no"
+  notify: restart network
+
+- name: Добавить путь по-умолчанию
+  lineinfile:
+    path: /etc/sysconfig/network-scripts/ifcfg-eth1
+    line:  "GATEWAY=192.168.100.10"
+  notify: restart network
+
+- name: Перезапустить сеть
+  service:
+    name: network
+    state: restarted
+
+- name: Запуск firewalld
+  service:
+    name: firewalld
+    enabled: true
+    state: started
+
+- name: Установить internal как значение по-умолчанию
+  command: firewall-cmd --set-default-zone=internal
+
+- name: Разрешить порт для централизованного сбора логов
+  firewalld:
+    zone: internal
+    port: "19532/tcp"
+    permanent: yes
+    state: enabled
+    immediate: yes
+    
+    
+    

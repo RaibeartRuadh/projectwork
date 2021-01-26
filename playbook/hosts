@@ -1,0 +1,12 @@
+[firewall]
+fwd ansible_host=192.168.100.10 ansible_ssh_port=22 ansible_user=vagrant ansible_private_key_file=.vagrant/machines/fwd/virtualbox/private_key
+front ansible_host=192.168.100.11 ansible_ssh_port=22 ansible_user=vagrant ansible_private_key_file=.vagrant/machines/front/virtualbox/private_key
+[web]
+web ansible_host=192.168.100.12 ansible_ssh_port=22 ansible_user=vagrant ansible_private_key_file=.vagrant/machines/web/virtualbox/private_key
+[databases]
+db ansible_host=192.168.100.13 ansible_ssh_port=22 ansible_user=vagrant ansible_private_key_file=.vagrant/machines/db/virtualbox/private_key
+[logs&journal]
+journal ansible_host=192.168.100.14 ansible_ssh_port=22 ansible_user=vagrant ansible_private_key_file=.vagrant/machines/journal/virtualbox/private_key
+[backups]
+backup ansible_host=192.168.100.15 ansible_ssh_port=22 ansible_user=vagrant ansible_private_key_file=.vagrant/machines/backup/virtualbox/private_key
+
