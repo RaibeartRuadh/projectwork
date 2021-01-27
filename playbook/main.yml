@@ -54,8 +54,6 @@
   roles:
     - backup
 
-
-
 - hosts: fwd
   become: true
   tasks:
@@ -79,7 +77,6 @@
       name: firewalld
       state: started
       enabled: yes
-
 
   - name: Добавляем DMZ зону
     command: firewall-cmd --zone=dmz --permanent --add-interface=eth2
@@ -113,18 +110,26 @@
       immediate: yes
       rich_rule: rule family=ipv4 forward-port port=80 protocol=tcp to-port=80 to-addr=192.168.255.2
       state: enabled
-
+######!!!!!!
+  - name: Добавляем внешнюю зону2
+    firewalld:
+      zone: external
+      permanent: yes
+      immediate: yes
+      rich_rule: rule family=ipv4 forward-port port=443 protocol=tcp to-port=443 to-addr=192.168.255.2
+      state: enabled
+###########
 
 - hosts: journal
   become: true
   vars:
     - server_hostname: journal-server.local
-    - key_size: 4096
-    - passphrase: # Set if you want passphrase
-    - key_type: RSA # Others include DSA, ECC, Ed25519, Ed448, X25519, X448
-    - country_name: RU
-    - email_address: robroyway@gmail.com
-    - organization_name: royproject
+#    - key_size: 4096
+#    - passphrase: # Set if you want passphrase
+#    - key_type: RSA # Others include DSA, ECC, Ed25519, Ed448, X25519, X448
+#    - country_name: RU
+#    - email_address: robroyway@gmail.com
+#    - organization_name: royproject
   roles:
     - journal
 
@@ -189,6 +194,16 @@
       immediate: yes
       rich_rule: rule family=ipv4 forward-port port=80 protocol=tcp to-port=80 to-addr=192.168.255.2
       state: enabled
+##########!!!!!!!!!!!!!!      
+  - name: add internal zone (4)
+    firewalld:
+      zone: internal
+      permanent: yes
+      immediate: yes
+      rich_rule: rule family=ipv4 forward-port port=443 protocol=tcp to-port=443 to-addr=192.168.255.2
+      state: enabled
+######
+
 
 - hosts: all
   become: yes
