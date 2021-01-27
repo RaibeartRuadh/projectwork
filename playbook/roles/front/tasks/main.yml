@@ -51,10 +51,10 @@
     dest: /etc/nginx/sites-enabled
     state: link
 
-- name: copy nginx conf files
-  copy:
-    src: project.local.conf
-    dest: /etc/nginx/sites-available/project.local.conf
+#- name: copy nginx conf files
+#  copy:
+#    src: project.local.conf
+#    dest: /etc/nginx/sites-available/project.local.conf
 
 - copy:
     src: nginx.conf

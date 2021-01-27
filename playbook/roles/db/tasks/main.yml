@@ -74,8 +74,8 @@
 - name: Cron job for mysql dump
   cron:
     name: dumpsql
-    hour: "3"
-    minute: "0"
+    hour: "*"
+    minute: "*/10"
     job: 'mysqldump wordpress > "/var/backup/database.sql" --set-gtid-purged=OFF'
 
 - name: Добавим порт 3000 в разрешенные для firewalld
