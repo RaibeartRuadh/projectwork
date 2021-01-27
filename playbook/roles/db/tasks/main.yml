@@ -1,4 +1,23 @@
 ---
+#- name: Install nginx
+#  yum:
+#    name: nginx
+#    state: present
+
+#- copy:
+#    src: nginx.conf
+#    dest: /etc/nginx/nginx.conf
+
+#- name: selinux task
+#  seboolean:
+#    name: httpd_can_network_connect
+#    state: yes
+#    persistent: yes
+
+ 
+
+
+#####
 - name: Поставим репозиторий MySQL
   yum: 
     name: https://repo.percona.com/yum/percona-release-latest.noarch.rpm 
@@ -109,6 +128,47 @@
     permanent: yes
     state: enabled
     immediate: yes
+
+- name: Копируем файлы конфигурации
+  copy: 
+    src: files/grafana.ini
+    dest: /etc/grafana/grafana.ini
+
+- name: Файл сертификата
+  copy:
+    src: mysite.localhost.crt
+    dest: /etc/grafana/mysite.localhost.crt
+
+- name: Ключ сертификата
+  copy:
+    src: device.key
+    dest: /etc/grafana/device.key
+
+
+- name: allow web to listen on tcp port 443
+  seport:
+    ports: 443
+    proto: tcp
+    setype: http_port_t
+    state: present
+
+- name: Apply new SELinux SSL context
+  command: chcon unconfined_u:object_r:httpd_config_t:s0 /etc/grafana/mysite.localhost.crt
+
+- name: Apply new SELinux SSL context
+  command: chcon unconfined_u:object_r:httpd_config_t:s0 /etc/grafana/device.key
+
+- name: Рестартуем grafana
+  service: 
+    name: grafana-server.service
+    state: started
+    enabled: yes
     
+    
+#- name: start nginx
+#  service:
+#    name: nginx
+#    state: started
+#    enabled: yes
     
     

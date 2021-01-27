@@ -20,7 +20,7 @@
     line: "GATEWAY=192.168.255.1"
   notify: restart network
 
-- name: Restart network (vagrant bug)
+- name: Restart network 
   service:
     name: network
     state: restarted
@@ -31,6 +31,11 @@
     src: upstream.conf
     dest: /etc/nginx/upstream.conf
 
+- name: копируем grafana.conf
+  copy:
+    src: grafana.conf
+    dest: /etc/nginx/grafana.conf
+    
 - name: Файл сертификата
   copy:
     src: mysite.localhost.crt
