@@ -70,8 +70,8 @@ Wordpress развернут на хосте 192.168.100.12 - на 192.168.100.1
 
 		ssh-to-telegram.sh
 		
-		USERID="-435987725"
-		KEY="1493023337:AAEHNRl874m46EfqY-d4b-_RWWcEvrZuANk"
+		USERID="-43!!!!!!!!!5"
+		KEY="14!!!!!!!!37:AAE!!!!!!!!!!!Y-d4b-_R!!!!!!!!!!!ANk"
 		TIMEOUT="10"
 		URL="https://api.telegram.org/bot$KEY/sendMessage"
 		DATE_EXEC="$(date "+%d %b %Y %H:%M")"
