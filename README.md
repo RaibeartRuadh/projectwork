@@ -161,110 +161,88 @@ Wordpress развернут на хосте 192.168.100.12 - на 192.168.100.1
 
 ![Иллюстрация к проекту](screenshots/pic.png)
 
-## База данных (Резервирование)
+### База данных (Резервирование)
 
 Для работы Wordpress установлен MySQL. Для сохранения дампа базы используется расписание в cron (каждые 5 минут для теста). Дамп сораняется на хосте 192.168.100.13 в директори /var/backup
+Пример из playbook ansible для включения расписания в cron на создания дампа.
+
+		- name: Cron job for mysql dump `
+		  cron: `
+		    name: dumpsql
+		    minute: "*/5" 
+		    hour: "*" 
+		    day: "*" 
+		    month: "*" 
+		    weekday: "*" 
+		    job: 'mysqldump wordpress > "/var/backup/database.sql" --set-gtid-purged=OFF
+
+/var/backup/database.sql - где будут храниться бэкапы
+—set-gtid-purged=OFF — указывает то, что мы не используем репликацию на основе глобальных идентификаторов GTID.
 
 ![Иллюстрация к проекту](screenshots/pic6.png)
 
+## HTTPS
 
+Для возможности работы по https были созданы самподписанные сертификаты.
 
 ## Ferewall
 
+Выполнено зональное разделение по сетевым интерфейсам: external (eth0), internal (eth1), dmz (eth2):
+
+    `firewall-cmd --zone=external --change-interface=eth0`  
+    `firewall-cmd --zone=internal --change-interface=eth1`  
+    `firewall-cmd --zone=dmz --change-interface=eth2`  
+
+Настроен форвардинг
+
+    `echo "net.ipv4.conf.all.forwarding=1" >> /etc/sysctl.d/01-forwarding.conf`  
+    `echo "net.ipv4.ip_forward=1" >> /etc/sysctl.d/01-forwarding.conf`  
+    `sysctl -p /etc/sysctl.d/01-forwarding.conf`  
+
+Настроен маскарадинг для выхода из локальной сети
+
+    `iptables -t nat -A POSTROUTING ! -d 192.168.0.0/16 -o eth0 -j MASQUERADE`
+
+На внешнем интерфейсе разрешен вход по 443 порту
+
+    `firewall-cmd --zone=external --add-service=https`  
+
+На хост 192.168.100.11 frontend настроим проброс на 80 и 443 порты  
+    `firewall-cmd --zone=external --add-forward-port=port=80:proto=tcp:toport=80:toaddr=192.168.255.2`
+    `firewall-cmd --zone=external --add-forward-port=port=80:proto=tcp:toport=443:toaddr=192.168.255.2`  
 
 
-## Selinux
+На хостах включен firewall. Проверка состояния и параметров:
 
+		$ firewall-cmd --zone=external --list-all
 
-
-
-------------------------------------------------------------------
-Хосты: 
-
-`  fwd: ip: '192.168.100.10'   ` 
-`  front: ip: '192.168.100.11'  ` 
-`  web: ip: '192.168.100.12'  `
-`  db: ip: '192.168.100.13'   `
-`  journal: ip: '192.168.100.14'  `
-`  backup:  ip: '192.168.100.15'  `
-
-
-
-## web Wordpress
-
-
-Для того, чтобы это работало под SeLinux были добавлены правила:
-Разрешение для использование 443 порта `http_port_t`
-Исправление контекста для сертификатов, чтобы https смог их считать:
-`chcon unconfined_u:object_r:httpd_config_t:s0 /home/vagrant/<NAMEOFCERTFILE.EXT> `
-Разрешения на использование подключения к сети, базе данных и работы с wordpress
-`httpd_sys_content_t`
-`httpd_sys_rw_content_t`
-`httpd_log_t`
-`httpd_can_network_connect`
-`httpd_can_network_connect_db`
-
-firewalld 
-прописано разрешение на порт 443
-
-
-## db
-
-На хосте развернуты:
-- MySQL DB для работы Wordpress
-- Prometheus для сбора метрик - установка написана как роль
-- Node exporter - для сбора данных о состоянии сервера с подключаемыми коллекторами метрик. Он позволяет измерять различные ресурсы машины, такие как использование памяти, диска и процессора. установка написана как роль
-- Grafana - для вывода данных метрик и настройки алертинга (в последних версиях это уже есть). установка написана как роль
-
-После установки MySQL фоздается учетная запись для работы Wordpress
-Создается расписание для крона под сохранения дампа базы. Для теста - каждые 5 минут
-
-`- name: Cron job for mysql dump `
-`  cron: `
-`    name: dumpsql `
-`    minute: "*/5" `
-`    hour: "*" `
-`    day: "*" `
-`    month: "*" `
-`    weekday: "*" `
-`    job: 'mysqldump wordpress > "/var/backup/database.sql" --set-gtid-purged=OFF' `
-` /var/backup/database.sql - где будут храниться бэкапы`
-` —set-gtid-purged=OFF — указывает то, что мы не используем репликацию на основе глобальных идентификаторов GTID. `
-
-
-
-
-
+![Иллюстрация к проекту](screenshots/pic10.png)
 
 ## Selinux
+
 Включен на каждом хосте. Проверка:
 Подключиться к хосту и выполнить команду
 
 ` $ sestatus -v `
 
-![Иллюстрация к проекту](pic2.png)
+![Иллюстрация к проекту](screenshots/pic7.png)
 
 
-## fwd
+------------------------------------------------------------------
+## Хосты: 
 
-Используется для создания сетевой инфраструктуры
-
-Зонирование:
-    `firewall-cmd --zone=external --change-interface=eth0`  
-    `firewall-cmd --zone=internal --change-interface=eth1`  
-    `firewall-cmd --zone=dmz --change-interface=eth2`  
-
-Вход по http и https
-
-    `firewall-cmd --zone=external --add-service=http`  
-	
-Маскарадинг
-    `firewall-cmd --zone=external --add-masquerade`  
-	
-## backup	
+		fwd: ip: '192.168.100.10'       -  Роутер
+		front: ip: '192.168.100.11'     -  Frontend (Wordpress)
+		web: ip: '192.168.100.12'       -  Wordpress, Grafana, Prometheus, NodeExporter
+		db: ip: '192.168.100.13'        -  MySQL
+		journal: ip: '192.168.100.14'   -  центральное логирование
+		backup:  ip: '192.168.100.15'   -  borg backup
 
 
-
+Документация:
+1. 
+2. 
+3. 
 
 
 
