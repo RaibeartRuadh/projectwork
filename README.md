@@ -49,11 +49,11 @@ Wordpress развернут на хосте 192.168.100.12 - на 192.168.100.1
 - В боковом выберите Dashboards - manages и выберите подготовленный dashboard - `RaibeartRuadh Dashboards`
 - Выбранная панель отображает собираемые Prometheus метрики по следующим категориям:
 
-		`- Load Average`
-		`- Memory`
-		`- Disk size`
-		`- Disk I/O`
-		`- Network `
+		- Load Average
+		- Memory
+		- Disk size
+		- Disk I/O
+		- Network 
 
 Графики на Dashboard
 ![Иллюстрация к проекту](screenshots/pic4.png)
