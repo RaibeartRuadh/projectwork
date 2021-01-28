@@ -1,5 +1,6 @@
-USERID="-469980725"
-KEY="1493001337:AAEHNRl87mm47EfqY-d4b-_RWWcEvrZuANk"
+USERID="-46########25"
+KEY="14######37:AA##########47EfqY-d4b-_RW#########ANk"
+# real credential were hided
 TIMEOUT="10"
 URL="https://api.telegram.org/bot$KEY/sendMessage"
 DATE_EXEC="$(date "+%d %b %Y %H:%M")"
