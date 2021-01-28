@@ -1,5 +1,5 @@
 USERID="-469980725"
-KEY="1493001337:AAEHNRl87mm47EfqY-d4b-_RWWcEvrZuANk"
+KEY="1!!!!!!337:AA!!!!!!!!!!!fqY-d4b-_R!!!!!!!!!!!!!ANk"
 TIMEOUT="10"
 URL="https://api.telegram.org/bot$KEY/sendMessage"
 DATE_EXEC="$(date "+%d %b %Y %H:%M")"
