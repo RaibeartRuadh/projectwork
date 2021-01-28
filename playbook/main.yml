@@ -132,12 +132,7 @@
   become: true
   vars:
     - server_hostname: journal-server.local
-#    - key_size: 4096
-#    - passphrase: # Set if you want passphrase
-#    - key_type: RSA # Others include DSA, ECC, Ed25519, Ed448, X25519, X448
-#    - country_name: RU
-#    - email_address: robroyway@gmail.com
-#    - organization_name: royproject
+
   roles:
     - journal
 
@@ -183,34 +178,6 @@
   become: true
   roles:
     - journald
-
-#########################
-#- hosts: fwd
-#  become: true
-#  tasks:
-#  - name: add internal zone (2)
-#    firewalld:
-#      zone: internal
-#      masquerade: "yes"
-#      permanent: yes
-#      immediate: yes
-#      state: enabled
-#  - name: add internal zone (3)
-#    firewalld:
-#      zone: internal
-#     permanent: yes
-#      immediate: yes
-#      rich_rule: rule family=ipv4 forward-port port=80 protocol=tcp to-port=80 to-addr=192.168.255.2
-#      state: enabled
-##########!!!!!!!!!!!!!!      
-#  - name: add internal zone (4)
-#    firewalld:
-#      zone: internal
-#      permanent: yes
- #     immediate: yes
- #     rich_rule: rule family=ipv4 forward-port port=443 protocol=tcp to-port=443 to-addr=192.168.255.2
- #     state: enabled
-######
 
 
 - hosts: all
