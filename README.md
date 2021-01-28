@@ -63,7 +63,34 @@ Wordpress развернут на хосте 192.168.100.12 - на 192.168.100.1
 - Предупреждение в телеграм-канал о входе по ssh на любой из хостов
 - Предупреждение в телеграмм-канал о достижении заданного значения заполнения основного диска /dev/sda1 на каждом из хостов (установлены значения 10% для демонстрации. 95% и 99%)
 
+Для отслеживания состояния заполнения основного диска используется система юнит-сервисов - юнит-таймер и юнит-инициатор, вызывающий скрипт.
+Для уведомления о входе по ssh используется скрипт /etc/profile.d, вызываемый при ssh авторизации.
+
+		ssh-to-telegram.sh
+		
+		USERID="-435987725"
+		KEY="1493023337:AAEHNRl874m46EfqY-d4b-_RWWcEvrZuANk"
+		TIMEOUT="10"
+		URL="https://api.telegram.org/bot$KEY/sendMessage"
+		DATE_EXEC="$(date "+%d %b %Y %H:%M")"
+		TMPFILE='/tmp/ipinfo-$DATE_EXEC.txt'
+		if [ -n "$SSH_CLIENT" ]; then
+			IP=$(awk '{print $1}' <<< $SSH_CLIENT)
+			PORT=$(awk '{print $3}' <<< $SSH_CLIENT)
+			HOSTNAME=$(hostname -f)
+			IPADDR=$(hostname -I | awk '{print $1}')
+			curl http://ipinfo.io/$IP -s -o $TMPFILE
+			CITY=$(jq -r '.city' < $TMPFILE)
+			REGION=$(cat $TMPFILE | jq '.region' | sed 's/"//g')
+			COUNTRY=$(cat $TMPFILE | jq '.country' | sed 's/"//g')
+			ORG=$(cat $TMPFILE | jq '.org' | sed 's/"//g')
+			TEXT="$DATE_EXEC: Вход пользователя ${USER} по ssh на $HOSTNAME
+		($IPADDR) из $IP - $ORG - $CITY, $REGION, $COUNTRY через порт $PORT"
+			curl -s --max-time $TIMEOUT -d "chat_id=$USERID&disable_web_page_preview=1&text=$TEXT" $URL > /dev/null
+			rm $TMPFILE
+		fi
 Пример:
+
 ![Иллюстрация к проекту](screenshots/pic9.png)
 
 При входе по SSH не в виртуальной сети должны выводиться данные (пример):
@@ -75,7 +102,8 @@ Wordpress развернут на хосте 192.168.100.12 - на 192.168.100.1
 		Saint Petersburg, St.-Petersburg, RU
 		через порт 22
 
-##Центральное логирование
+
+## Центральное логирование
 
 На каждом хосте устанавливается systemd-journal-gateway - http-демон, открывающий порт для просмотра (или скачивания) записей журнала 
 На хосте journal установлен systemd-journal-remote - демон, скачивающий или принимающий записи журналов на центральном сервере
@@ -94,6 +122,58 @@ Wordpress развернут на хосте 192.168.100.12 - на 192.168.100.1
 ![Иллюстрация к проекту](screenshots/pic5.png)
 
 
+## Резервное копирование
+
+Для обеспечения сохранения данных используется пакет Borg, собирающий данные со всех хостов:
+- Бэкапы сохраняются на хосте backup 192.168.100.15 в директории /var/backup
+- Исполнение выполнено через юниты: юнит-таймер и юнит-инициатор, вызывающий скрипт.
+- Расписание - каждые 5 минут (для демонстрации). Управление осуществляется службами 
+- Скрипт на резервирование:
+
+		#!/bin/bash
+		# лок на случай повторного запуска
+		LOCKFILE=/tmp/lockfile
+		if [ -e ${LOCKFILE} ] && kill -0 `cat ${LOCKFILE}`; then
+		    echo "Service already working!"
+		    exit
+		fi
+		trap "rm -f ${LOCKFILE}; exit" INT TERM EXIT
+		echo $$ > ${LOCKFILE}
+		export BORG_RSH="ssh -i /root/.ssh/id_rsa"
+		export BORG_REPO=ssh://borguser@192.168.100.15/var/backup/{{ inventory_hostname }}
+		export BORG_PASSPHRASE='password'
+		LOG="/var/log/borg_backup.log"
+		[ -f "$LOG" ] || touch "$LOG"
+		exec &> >(tee -i "$LOG")
+		exec 2>&1
+		# создание резервных записей
+		borg create \
+		  --verbose --stats --progress \
+		  ::{{ inventory_hostname }}-'{now:%Y-%m-%d_%H:%M:%S}' \
+		  /var/backup /etc
+		# Очистка от старых резервных записей
+		borg prune \
+		  -v --list \
+		  --keep-within 1m \
+		  --keep-monthly 3 
+		# удаляем лок
+		rm -f ${LOCKFILE}
+
+![Иллюстрация к проекту](screenshots/pic.png)
+
+## База данных (Резервирование)
+
+Для работы Wordpress установлен MySQL. Для сохранения дампа базы используется расписание в cron (каждые 5 минут для теста). Дамп сораняется на хосте 192.168.100.13 в директори /var/backup
+
+![Иллюстрация к проекту](screenshots/pic6.png)
+
+
+
+## Ferewall
+
+
+
+## Selinux
 
 
 
@@ -112,26 +192,6 @@ Wordpress развернут на хосте 192.168.100.12 - на 192.168.100.1
 
 ## web Wordpress
 
-https://192.168.100.12
-
-В качестве web-сервера используется Httpd (apache2)
-
-Конфигурация сайта
-Используются самоподписанные сертфикаты
-
-<IfModule mod_ssl.c>
-<VirtualHost *:443>
-    ServerName 192.168.100.12
-    ServerAlias project.local
-    SSLEngine on
-    SSLCertificateFile /home/vagrant/mysite.localhost.crt
-    SSLCertificateKeyFile /home/vagrant/device.key
-
-    DocumentRoot /var/www/html/project.local/wordpress
-    ErrorLog /var/www/html/project.local/log/error.log
-    CustomLog /var/www/html/project.local/log/requests.log combined
-</VirtualHost>
-</IfModule>
 
 Для того, чтобы это работало под SeLinux были добавлены правила:
 Разрешение для использование 443 порта `http_port_t`
@@ -172,22 +232,6 @@ firewalld
 ` —set-gtid-purged=OFF — указывает то, что мы не используем репликацию на основе глобальных идентификаторов GTID. `
 
 
-### Вход в Grafana
-Перейдите по 
-http://192.168.100.13
-
-При первом входе введите в качестве логина и пароля: admin/admin
-Графана предложит сменить пароль - выполните это
-Выберите Dashboards - manage в меню и выберите подготовленный dashboard - `RaibeartRuadh Dashboards`
-Выбранная панель отображает метрики по следующим категориям:
-
-		`- Load Average`
-		`- Memory `
-		`- Disk size `
-		`- Disk I/O `
-		`- Network `
-
-![Иллюстрация к проекту](pic3.png)
 
 
 
@@ -219,43 +263,8 @@ http://192.168.100.13
 	
 ## backup	
 
-Прикрутил бэкапирование хостов
-используя borg
-Расписание - каждые 5 минут. Управление осуществляется службами 
-backup-borg.timer
-backup-borg.service (oneshot)
-Скрипт на резервирование:
 
-		#!/bin/bash
-		# лок на случай повторного запуска
-		LOCKFILE=/tmp/lockfile
-		if [ -e ${LOCKFILE} ] && kill -0 `cat ${LOCKFILE}`; then
-		    echo "Service already working!"
-		    exit
-		fi
-		trap "rm -f ${LOCKFILE}; exit" INT TERM EXIT
-		echo $$ > ${LOCKFILE}
-		export BORG_RSH="ssh -i /root/.ssh/id_rsa"
-		export BORG_REPO=ssh://borguser@192.168.100.15/var/backup/{{ inventory_hostname }}
-		export BORG_PASSPHRASE='password'
-		LOG="/var/log/borg_backup.log"
-		[ -f "$LOG" ] || touch "$LOG"
-		exec &> >(tee -i "$LOG")
-		exec 2>&1
-		# создание резервных записей
-		borg create \
-		  --verbose --stats --progress \
-		  ::{{ inventory_hostname }}-'{now:%Y-%m-%d_%H:%M:%S}' \
-		  /var/backup /etc
-		# Очистка от старых резервных записей
-		borg prune \
-		  -v --list \
-		  --keep-within 1m \
-		  --keep-monthly 3 
-		# удаляем лок
-		rm -f ${LOCKFILE}
 
-Бэкапы доступны в директории: /var/backup
 
-![Иллюстрация к проекту](pic4.png)
+
 
