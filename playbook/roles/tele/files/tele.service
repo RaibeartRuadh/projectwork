@@ -1,0 +1,9 @@
+[Unit]
+Description=Служба контроля места
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/root/df.sh
+

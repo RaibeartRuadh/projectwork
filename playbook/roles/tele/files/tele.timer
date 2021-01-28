@@ -1,0 +1,11 @@
+[Unit]
+Description=Сервис контроля места - таймер
+
+[Timer]
+OnBootSec=300
+OnUnitActiveSec=300
+Unit=tele.service
+
+[Install]
+WantedBy=multi-user.target
+

@@ -1,0 +1,25 @@
+---
+   
+- name:  скрипт
+  copy:
+    src: df.sh
+    dest: /root/df.sh
+    mode: 0755
+
+- name: Копируем unit service
+  copy:
+    src: tele.service
+    dest: /etc/systemd/system/tele.service
+
+- name: Копируем unit timer
+  copy:
+    src: tele.timer
+    dest: /etc/systemd/system/
+  notify:
+   - enable tele.timer
+
+
+
+  
+  
+  

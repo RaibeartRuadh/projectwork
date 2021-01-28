@@ -28,6 +28,8 @@
       - ntp
       - tzdata      
       - policycoreutils-python
+      - jq
+      - curl
 
   - name: Отключаем chrony
     systemd:
@@ -43,6 +45,12 @@
       name: ntpd
       state: restarted
       enabled: true
+
+- hosts: all
+  become: true
+  roles:
+    - tele
+
 
 - hosts: all, !fwd, !front
   become: true
@@ -208,5 +216,11 @@
 - hosts: all
   become: yes
   tasks:
+  - name:  скрипт алертов входа по SSH
+    copy:
+      src: ssh-to-telegram.sh
+      dest: /etc/profile.d/ssh-to-telegram.sh
+      mode: 0755
+
   - reboot:
 
