@@ -150,10 +150,20 @@ Wordpress развернут на хосте 192.168.100.12 - на 192.168.100.1
 		exec &> >(tee -i "$LOG")
 		exec 2>&1
 		# создание резервных записей
-		borg create \
-		  --verbose --stats --progress \
+		borg create --verbose --stats --progress \
 		  ::{{ inventory_hostname }}-'{now:%Y-%m-%d_%H:%M:%S}' \
-		  /var/backup /etc
+		    /root                                \
+		    /etc                                 \
+		    /var/www                             \
+		    /home                                \
+		    --exclude /dev                       \
+		    --exclude /proc                      \
+		    --exclude /sys                       \
+		    --exclude /var/run                   \
+		    --exclude /run                       \
+		    --exclude /lost+found                \
+		    --exclude /mnt                       \
+		    --exclude /var/lib/lxcfs
 		# Очистка от старых резервных записей
 		borg prune \
 		  -v --list \
